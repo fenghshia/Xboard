@@ -5,17 +5,43 @@ on:
     branches: ["master", "new-dev"]
   workflow_dispatch:
 
+concurrency:
+  group: docker-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, dom, xml, xmlwriter, curl, pdo_sqlite, posix
+          coverage: none
+          tools: composer:v2
+      - name: Install test dependencies
+        run: composer install --no-interaction --prefer-dist --no-scripts --no-progress
+      - name: Test Naive subscriptions
+        run: vendor/bin/phpunit --bootstrap vendor/autoload.php tests/Unit/Protocols/NaiveSubscriptionTest.php
+
   build:
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-      id-token: write
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      digest: ${{ steps.build-and-push.outputs.digest }}
 
     steps:
       - name: Checkout code
@@ -53,7 +79,12 @@ jobs:
 
       - name: Get version
         id: get_version
-        run: echo "version=$(git describe --tags --always)" >> $GITHUB_OUTPUT
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(tr -d '\r\n' < VERSION)
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Extract metadata
         id: meta
@@ -65,16 +96,11 @@ jobs:
             type=sha,format=short,prefix=,enable=true
             type=raw,value=new,enable=${{ github.ref == 'refs/heads/master' }}
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' }}
-            type=raw,value=${{ steps.get_version.outputs.version }}
+            type=raw,value=${{ steps.get_version.outputs.version }},enable=${{ github.ref == 'refs/heads/master' }}
+            type=raw,value=v${{ steps.get_version.outputs.version }},enable=${{ github.ref == 'refs/heads/master' }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
-
-      - name: Update version in app.php
-        run: |
-          VERSION=$(date '+%Y%m%d')-$(git rev-parse --short HEAD)
-          sed -i "s/'version' => '.*'/'version' => '$VERSION'/g" config/app.php
-          echo "Updated version to: $VERSION"
 
       - name: Build and push
         id: build-and-push
@@ -94,8 +120,47 @@ jobs:
             CACHEBUST=${{ github.sha }}
             REPO_URL=https://github.com/${{ github.repository }}
             BRANCH_NAME=${{ github.ref_name }}
+            COMMIT_SHA=${{ github.sha }}
           provenance: false
           outputs: type=registry,push=true
           allow: |
             network.host
 
+
+  release:
+    if: github.ref == 'refs/heads/master'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish GitHub Release
+        uses: actions/github-script@v7
+        env:
+          RELEASE_VERSION: ${{ needs.build.outputs.version }}
+          IMAGE_DIGEST: ${{ needs.build.outputs.digest }}
+        with:
+          script: |
+            const fs = require('fs');
+            const tag = `v${process.env.RELEASE_VERSION}`;
+            const image = `ghcr.io/${context.repo.owner}/${context.repo.repo}`.toLowerCase();
+            const body = fs.readFileSync('RELEASE_NOTES.md', 'utf8')
+              + `\n\nDocker: \`${image}:${process.env.RELEASE_VERSION}\``
+              + `\nDigest: \`${process.env.IMAGE_DIGEST}\``
+              + `\nCommit: \`${context.sha}\``;
+            try {
+              await github.rest.repos.getReleaseByTag({...context.repo, tag});
+              core.info(`Release ${tag} already exists; leaving it unchanged.`);
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              await github.rest.repos.createRelease({
+                ...context.repo,
+                tag_name: tag,
+                target_commitish: context.sha,
+                name: `${tag} — NaiveProxy subscriptions`,
+                body,
+                draft: false,
+                prerelease: false
+              });
+            }

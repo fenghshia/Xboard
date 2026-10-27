@@ -21,6 +21,7 @@ class General extends AbstractProtocol
         Server::TYPE_SOCKS,
         Server::TYPE_TUIC,
         Server::TYPE_HTTP,
+        Server::TYPE_NAIVE,
     ];
 
     protected $protocolRequirements = [
@@ -45,6 +46,7 @@ class General extends AbstractProtocol
                 Server::TYPE_SOCKS => self::buildSocks($item['password'], $item),
                 Server::TYPE_TUIC => self::buildTuic($item['password'], $item),
                 Server::TYPE_HTTP => self::buildHttp($item['password'], $item),
+                Server::TYPE_NAIVE => self::buildNaive($item['password'], $item),
                 default => '',
             };
         }
@@ -444,6 +446,26 @@ class General extends AbstractProtocol
         $credentials = base64_encode("{$password}:{$password}");
         $addr = Helper::wrapIPv6($server['host']);
         return "socks://{$credentials}@{$addr}:{$server['port']}#{$name}\r\n";
+    }
+
+    public static function buildNaive($password, $server)
+    {
+        // Naive subscriptions use HTTPS; never silently downgrade to plaintext HTTP.
+        if ((int) data_get($server, 'protocol_settings.tls', 0) !== 1) {
+            return '';
+        }
+
+        $name = rawurlencode($server['name']);
+        $addr = Helper::wrapIPv6($server['host']);
+        // Match Xboard's UUID-based HTTP/SOCKS authentication convention.
+        $credential = rawurlencode($password);
+        $uri = "naive+https://{$credential}:{$credential}@{$addr}:{$server['port']}";
+
+        if ($serverName = data_get($server, 'protocol_settings.tls_settings.server_name')) {
+            $uri .= '?' . http_build_query(['sni' => $serverName], '', '&', PHP_QUERY_RFC3986);
+        }
+
+        return $uri . "#{$name}\r\n";
     }
 
     public static function buildHttp($password, $server)

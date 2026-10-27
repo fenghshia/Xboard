@@ -20,6 +20,7 @@ class SingBox extends AbstractProtocol
         Server::TYPE_ANYTLS,
         Server::TYPE_SOCKS,
         Server::TYPE_HTTP,
+        Server::TYPE_NAIVE,
     ];
     private $config;
     const CUSTOM_TEMPLATE_FILE = 'resources/rules/custom.sing-box.json';
@@ -97,6 +98,7 @@ class SingBox extends AbstractProtocol
                 ]
             ],
             'naive' => [
+                'base_version' => '1.13.0',
                 'protocol_settings.tls_settings.ech.enabled' => [
                     1 => '1.5.0'
                 ]
@@ -108,6 +110,26 @@ class SingBox extends AbstractProtocol
             ],
         ]
     ];
+
+    protected function filterServersByVersion()
+    {
+        $naiveCoreVersion = $this->clientName === 'sing-box' ? $this->clientVersion : null;
+        if (preg_match('/\bsing-box[\/\s]+v?(\d+(?:\.\d+){0,2})/i', $this->userAgent ?? '', $matches)) {
+            $naiveCoreVersion = $matches[1];
+        }
+
+        return array_values(array_filter(parent::filterServersByVersion(), function ($server) use ($naiveCoreVersion) {
+            if ($server['type'] !== Server::TYPE_NAIVE) {
+                return true;
+            }
+
+            // GUI app versions do not identify their embedded sing-box core version.
+            // Unknown/old clients must not receive an unsupported outbound type.
+            return !empty($naiveCoreVersion)
+                && version_compare($naiveCoreVersion, '1.13.0', '>=')
+                && (int) data_get($server, 'protocol_settings.tls', 0) === 1;
+        }));
+    }
 
     public function handle()
     {
@@ -176,6 +198,9 @@ class SingBox extends AbstractProtocol
             if ($item['type'] === Server::TYPE_HTTP) {
                 $httpConfig = $this->buildHttp($this->user['uuid'], $item);
                 $proxies[] = $httpConfig;
+            }
+            if ($item['type'] === Server::TYPE_NAIVE) {
+                $proxies[] = $this->buildNaive($item['password'], $item);
             }
         }
         foreach ($outbounds as &$outbound) {
@@ -807,6 +832,27 @@ class SingBox extends AbstractProtocol
         }
 
         return $array;
+    }
+
+    protected function buildNaive($password, $server): array
+    {
+        $tls = ['enabled' => true];
+        if ($serverName = data_get($server, 'protocol_settings.tls_settings.server_name')) {
+            $tls['server_name'] = $serverName;
+        }
+        $this->appendEch($tls, data_get($server, 'protocol_settings.tls_settings.ech'));
+
+        // Naive uses Chromium/Cronet; generic uTLS, ALPN and insecure settings
+        // are not supported by its TLS implementation.
+        return [
+            'type' => 'naive',
+            'tag' => $server['name'],
+            'server' => $server['host'],
+            'server_port' => (int) $server['port'],
+            'username' => $password,
+            'password' => $password,
+            'tls' => $tls,
+        ];
     }
 
     protected function buildHttp($password, $server): array
