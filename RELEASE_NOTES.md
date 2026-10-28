@@ -1,18 +1,15 @@
-手动外部节点支持版本。
+修复 Shadowrocket 订阅中缺失 Naïve 节点的问题。
 
-- 在后台“节点管理”右下角增加“手动外部节点”入口，提供新增、编辑、删除和权限组配置。
-- 支持 UUID、独立用户名/密码，以及协议参数 JSON，无需外部节点提供订阅服务或接入节点 API。
-- General、Clash/ClashMeta、sing-box 等订阅使用外部节点固定凭据；TUIC UUID 和密码独立。
-- 固定凭据使用 APP_KEY 加密保存，列表和编辑页不回显，编辑留空保留原值，审计日志脱敏。
-- 外部节点与机器分配、面板用户同步及流量扣费隔离。
-- 保留 v1.1.0 的 Naïve 订阅支持，并修复固定密码包含特殊字符时的 URI 编码。
+- Shadowrocket 专用出口加入 Naïve 白名单和导出分支，自动识别 UA 或 `flag=shadowrocket` 均可下发。
+- 使用 Shadowrocket 的 `http2://Base64(用户名:密码@地址:端口)?padding=1&peer=SNI#名称` 格式，开启 Naïve padding。
+- 保留手动外部节点的独立用户名、密码、IPv6、端口和 SNI；托管节点使用原有节点凭据。
+- 不将无 TLS 或 REALITY 节点伪装成 Naïve TLS 节点，不下发跳过证书验证、HTTP/3 或 UoT。
+- 保留 General、sing-box 及其他协议的现有订阅行为。
 
-验证：51 项 PHP 回归测试、116 项断言通过；后台页面的新增、编辑、删除、错误提示和手机窄屏交互检查通过。
+更新并重启面板后，在 Shadowrocket 刷新原订阅；如果 URL 带有 `flag=general`，改为 `flag=shadowrocket`。
+从 v1.2.0 升级无需新增数据库迁移；更早版本仍需执行 v1.2.0 的外部节点迁移。
 
-**升级需迁移数据库**：备份数据库及 `.env`，更新镜像后运行 `docker compose exec xboard php artisan xboard:update`，再重启面板。
+验证：56 项回归测试、136 项断言通过，包含订阅实际输出、UA 自动识别、显式 flag、原有节点共存、凭据与 IPv6、padding/SNI、非 TLS 排除等回归测试。尚未在实际 iOS 设备上验证导入与连通性。
 
-完整使用说明：`docs/manual-external-nodes.md`。
-
-外部固定凭据由获得节点配置的用户共用，节点实际流量与限制由外部服务器负责。已有客户端缓存中的凭据不会因隐藏节点而自动失效。
-
-Docker 镜像：`ghcr.io/fenghshia/xboard:1.2.0`，提供 linux/amd64 和 linux/arm64。
+完整说明：`docs/naive-subscription.md`。
+Docker 镜像：`ghcr.io/fenghshia/xboard:1.2.1`，提供 linux/amd64 和 linux/arm64。

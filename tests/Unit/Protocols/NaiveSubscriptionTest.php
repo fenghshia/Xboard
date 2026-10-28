@@ -7,6 +7,7 @@ use App\Models\Server;
 use App\Protocols\ClashMeta;
 use App\Protocols\General;
 use App\Protocols\SingBox;
+use App\Protocols\Shadowrocket;
 use App\Support\Setting;
 use App\Support\ProtocolManager;
 use Illuminate\Config\Repository;
@@ -115,6 +116,76 @@ class NaiveSubscriptionTest extends TestCase
         $this->assertSame('tls.example.com', $query['sni']);
     }
 
+    public function test_shadowrocket_subscription_contains_naive_and_existing_nodes(): void
+    {
+        $node = $this->node();
+        $trojan = array_replace($node, ['type' => Server::TYPE_TROJAN, 'name' => 'Trojan']);
+        $trojan['protocol_settings']['network'] = 'tcp';
+        $response = (new Shadowrocket($this->user(), [$node, $trojan], 'shadowrocket', '2.2.80'))->handle();
+        $decoded = base64_decode($response->getContent(), true);
+
+        $this->assertStringContainsString("STATUS=", $decoded);
+        $this->assertStringContainsString(Shadowrocket::buildNaive($node['password'], $node), $decoded);
+        $this->assertStringContainsString(Shadowrocket::buildTrojan($trojan['password'], $trojan), $decoded);
+        $this->assertStringNotContainsString('naive+https://', $decoded);
+        $this->assertCount(3, explode("\r\n", trim($decoded)));
+    }
+
+    public function test_shadowrocket_uri_preserves_external_credentials_ipv6_and_padding(): void
+    {
+        $node = $this->node();
+        $node['host'] = '2001:db8::1';
+        $node['username'] = 'external+user@site';
+        $node['password'] = 'p@ss:/?#% +';
+        $node['protocol_settings']['tls_settings']['allow_insecure'] = true;
+        $node['protocol_settings']['tls_settings']['ech'] = ['key' => 'private-key'];
+        $node['protocol_settings']['utls'] = ['enabled' => true, 'fingerprint' => 'chrome'];
+        $uri = Shadowrocket::buildNaive($node['password'], $node);
+        [$authority, $queryAndName] = explode('?', substr(trim($uri), strlen('http2://')), 2);
+        [$query, $name] = explode('#', $queryAndName, 2);
+        parse_str($query, $params);
+
+        $this->assertSame('external+user@site:p@ss:/?#% +@[2001:db8::1]:443', base64_decode($authority, true));
+        $this->assertSame(['padding' => '1', 'peer' => 'tls.example.com'], $params);
+        $this->assertSame($node['name'], rawurldecode($name));
+        $this->assertStringNotContainsString('private-key', $uri);
+    }
+
+    public function test_shadowrocket_uri_uses_managed_credentials_without_sni(): void
+    {
+        $node = $this->node();
+        $node['protocol_settings']['tls_settings'] = null;
+
+        $this->assertSame(
+            'http2://' . base64_encode('node-credential:node-credential@proxy.example.com:443')
+                . '?padding=1#' . rawurlencode($node['name']) . "\r\n",
+            Shadowrocket::buildNaive($node['password'], $node),
+        );
+    }
+
+    #[DataProvider('shadowrocketRequests')]
+    public function test_controller_selects_shadowrocket_naive_export(array $parameters, ?string $ua): void
+    {
+        $node = $this->node();
+        $request = Request::create('/api/v1/client/subscribe', 'GET', $parameters);
+        if ($ua !== null) {
+            $request->headers->set('User-Agent', $ua);
+        }
+        $response = (new ClientController())->doSubscribe($request, $this->user(), [$node]);
+        $decoded = base64_decode($response->getContent(), true);
+
+        $this->assertStringContainsString(Shadowrocket::buildNaive($node['password'], $node), $decoded);
+        $this->assertStringNotContainsString('naive+https://', $decoded);
+    }
+
+    public static function shadowrocketRequests(): array
+    {
+        return [
+            'automatic user agent' => [[], 'Shadowrocket/2.2.80 (iPhone; iOS 18.0)'],
+            'explicit flag and type filter' => [['flag' => 'shadowrocket', 'types' => 'naive'], null],
+        ];
+    }
+
     public function test_controller_general_subscription_accepts_naive_type_filter(): void
     {
         $node = $this->node();
@@ -217,6 +288,9 @@ class NaiveSubscriptionTest extends TestCase
             $node = $this->node();
             $node['protocol_settings']['tls'] = $tls;
             $this->assertSame('', General::buildNaive($node['password'], $node));
+            $this->assertSame('', Shadowrocket::buildNaive($node['password'], $node));
+            $decoded = base64_decode((new Shadowrocket($this->user(), [$node]))->handle()->getContent(), true);
+            $this->assertStringNotContainsString('http2://', $decoded);
             $config = $this->singBox([$node])->handle()->getData(true);
             $this->assertNotContains('naive', array_column($config['outbounds'], 'type'));
         }

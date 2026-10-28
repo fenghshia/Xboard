@@ -183,7 +183,7 @@ jobs:
                 ...context.repo,
                 tag_name: tag,
                 target_commitish: context.sha,
-                name: `${tag} — Manual external nodes`,
+                name: tag,
                 body,
                 draft: false,
                 prerelease: false

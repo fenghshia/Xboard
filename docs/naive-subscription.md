@@ -8,6 +8,7 @@
 | 输出 | 行为 |
 | --- | --- |
 | 通用 Base64 订阅（`flag=general`） | 加入 `naive+https://用户名:密码@地址:端口?sni=域名#名称` |
+| Shadowrocket（自动识别 UA 或 `flag=shadowrocket`） | 加入 `http2://Base64(用户名:密码@地址:端口)?padding=1&peer=SNI#名称`，显式开启 Naive padding |
 | sing-box JSON（`flag=sing-box/1.13.0`） | 加入 `type: naive` 出站，并纳入模板中的 selector/urltest 节点列表 |
 | sing-box 1.12 及更早版本、核心版本未知 | 不下发 Naive，保留其他兼容节点 |
 | Hiddify/SFM 等包装客户端 | 只有 UA 明确提供 `sing-box/1.13.0` 或更高核心版本时才下发；不把 GUI 版本当核心版本 |
@@ -34,6 +35,7 @@ TLS 关闭、缺失或设置为 REALITY 的节点不会被伪装成 HTTPS 导出
 ```text
 https://你的面板/api/v1/client/subscribe?token=原token&flag=general&types=naive
 https://你的面板/api/v1/client/subscribe?token=原token&flag=sing-box/1.13.0&types=naive
+https://你的面板/api/v1/client/subscribe?token=原token&flag=shadowrocket&types=naive
 ```
 
 第一种输出 Base64 编码的分享链接，适用于支持 `naive+https` 的客户端。
@@ -42,7 +44,16 @@ https://你的面板/api/v1/client/subscribe?token=原token&flag=sing-box/1.13.0
 
 第二种仅应在你确认本机实际使用 sing-box 1.13+ 且该构建包含 Naive/Cronet 支持时使用。
 手动添加 `flag` 不会升级客户端，也不会安装 Cronet。
-原版 `naive` 命令行客户端不直接读取这两种订阅；它需要自己的 `listen`/`proxy` JSON 配置。
+原版 `naive` 命令行客户端不直接读取这些订阅；它需要自己的 `listen`/`proxy` JSON 配置。
+
+Shadowrocket 应使用第三种或直接用原订阅链接自动识别。它使用专用的 `http2://` 分享格式，
+而非 General 的 `naive+https://`。`http2` 在此表示 TLS 上的 HTTP/2 代理，`padding=1` 开启 Naive 填充，
+`peer` 保留证书域名/SNI；不输出 HTTP/3、UoT 或跳过证书验证。
+用户名/密码保留手动外部节点固定凭据；托管节点仍使用用户节点凭据。
+更新面板并重启后，在 Shadowrocket 刷新订阅；如果订阅 URL 已有 `flag=general`，改为 `flag=shadowrocket`。
+建议使用最新版 Shadowrocket（2.2.80 更新记录包含 Naive padding 与旧版 HTTPS 代理兼容性修复）。
+订阅格式参考：[fscarmen/sing-box 的 Shadowrocket Naive 导出](https://github.com/fscarmen/sing-box/blob/main/sing-box.sh)。
+自动化测试验证订阅生成、UA 路由及参数保留；尚需实际 iOS 设备验证导入和连通性。
 
 sing-box 示例结构（凭据为演示值）：
 

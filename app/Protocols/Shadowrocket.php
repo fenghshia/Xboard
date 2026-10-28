@@ -18,6 +18,7 @@ class Shadowrocket extends AbstractProtocol
         Server::TYPE_TUIC,
         Server::TYPE_ANYTLS,
         Server::TYPE_SOCKS,
+        Server::TYPE_NAIVE,
     ];
 
     protected $protocolRequirements = [
@@ -65,6 +66,9 @@ class Shadowrocket extends AbstractProtocol
             }
             if ($item['type'] === Server::TYPE_SOCKS) {
                 $uri .= self::buildSocks($item['password'], $item);
+            }
+            if ($item['type'] === Server::TYPE_NAIVE) {
+                $uri .= self::buildNaive($item['password'], $item);
             }
         }
         return response(base64_encode($uri))
@@ -449,6 +453,27 @@ class Shadowrocket extends AbstractProtocol
         $uri = "anytls://{$credential}@{$addr}:{$server['port']}?{$query}#{$name}";
         $uri .= "\r\n";
         return $uri;
+    }
+
+    public static function buildNaive($password, $server)
+    {
+        // Shadowrocket uses its HTTP/2 URI scheme, not naive+https.
+        // HTTP/2 here is over TLS; never downgrade a non-TLS Naive node.
+        if ((int) data_get($server, 'protocol_settings.tls', 0) !== 1) {
+            return '';
+        }
+
+        $username = data_get($server, 'username', $password);
+        $addr = Helper::wrapIPv6($server['host']);
+        $userinfo = base64_encode("{$username}:{$password}@{$addr}:{$server['port']}");
+        $params = ['padding' => 1];
+        if ($serverName = data_get($server, 'protocol_settings.tls_settings.server_name')) {
+            $params['peer'] = $serverName;
+        }
+        $query = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+        $name = rawurlencode($server['name']);
+
+        return "http2://{$userinfo}?{$query}#{$name}\r\n";
     }
 
     public static function buildSocks($password, $server)
