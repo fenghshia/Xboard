@@ -21,7 +21,7 @@ class ServerService
      */
     public static function getAllServers(): Collection
     {
-        $query = Server::orderBy('sort', 'ASC');
+        $query = Server::where('is_external', false)->orderBy('sort', 'ASC');
 
         return $query->get()->append([
             'last_check_at',
@@ -41,7 +41,7 @@ class ServerService
      */
     public static function getMachineNodes(ServerMachine $machine): Collection
     {
-        return Server::where('machine_id', $machine->id)
+        return Server::where('is_external', false)->where('machine_id', $machine->id)
             ->where('enabled', true)
             ->orderBy('sort', 'ASC')
             ->get();
@@ -75,6 +75,11 @@ class ServerService
                 $server->port = (int) $server->port;
             }
             $server->password = $server->generateServerPassword($user);
+            if ($server->is_external) {
+                $credentials = $server->external_credentials ?? [];
+                $server->username = $credentials['username'] ?? $server->password;
+                $server->uuid = $credentials['uuid'] ?? $server->password;
+            }
             $server->rate = $server->getCurrentRate();
             return $server;
         })->toArray();
@@ -89,6 +94,9 @@ class ServerService
      */
     public static function getAvailableUsers(Server $node)
     {
+        if ($node->is_external) {
+            return collect();
+        }
         $groupIds = $node->group_ids ?? [];
         if (empty($groupIds)) {
             return collect();
@@ -405,6 +413,7 @@ class ServerService
     public static function getServer($serverId, ?string $serverType = null): Server | null
     {
         return Server::query()
+            ->where('is_external', false)
             ->when($serverType, function ($query) use ($serverType) {
                 $query->where('type', Server::normalizeType($serverType));
             })

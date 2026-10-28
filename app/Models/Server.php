@@ -113,7 +113,11 @@ class Server extends Model
     protected $table = 'v2_server';
 
     protected $guarded = ['id'];
+
+    protected $hidden = ['external_credentials'];
     protected $casts = [
+        'is_external' => 'boolean',
+        'external_credentials' => 'encrypted:array',
         'group_ids' => 'array',
         'route_ids' => 'array',
         'tags' => 'array',
@@ -372,6 +376,13 @@ class Server extends Model
 
     public function generateServerPassword(User $user): string
     {
+        if ($this->is_external) {
+            $credentials = $this->external_credentials ?? [];
+            return in_array($this->type, [self::TYPE_VLESS, self::TYPE_VMESS], true)
+                ? (string) ($credentials['uuid'] ?? '')
+                : (string) ($credentials['password'] ?? '');
+        }
+
         if ($this->type !== self::TYPE_SHADOWSOCKS) {
             return $user->uuid;
         }
@@ -510,7 +521,7 @@ class Server extends Model
     {
         return Attribute::make(
             get: function () {
-                if ($this->type === self::TYPE_SHADOWSOCKS) {
+                if ($this->type === self::TYPE_SHADOWSOCKS && !$this->is_external) {
                     return Helper::getServerKey($this->created_at, 16);
                 }
                 return null;

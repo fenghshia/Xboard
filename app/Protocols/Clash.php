@@ -276,7 +276,7 @@ class Clash extends AbstractProtocol
         $array['port'] = $server['port'];
         $array['udp'] = true;
 
-        $array['username'] = $password;
+        $array['username'] = data_get($server, 'username', $password);
         $array['password'] = $password;
 
         // TLS 配置
@@ -297,7 +297,7 @@ class Clash extends AbstractProtocol
         $array['server'] = $server['host'];
         $array['port'] = $server['port'];
 
-        $array['username'] = $password;
+        $array['username'] = data_get($server, 'username', $password);
         $array['password'] = $password;
 
         // TLS 配置

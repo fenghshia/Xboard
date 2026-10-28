@@ -78,7 +78,7 @@ class ServerV2
 
         $nodeId = (int) $request->input('node_id');
         if ($nodeId > 0) {
-            $serverInfo = ServerModel::where('id', $nodeId)
+            $serverInfo = ServerModel::where('is_external', false)->where('id', $nodeId)
                 ->where('machine_id', $machine->id)
                 ->where('enabled', true)
                 ->first();

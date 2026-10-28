@@ -318,7 +318,8 @@ class General extends AbstractProtocol
         $query = http_build_query($array);
         $addr = Helper::wrapIPv6($server['host']);
 
-        $uri = "trojan://{$password}@{$addr}:{$server['port']}?{$query}#{$name}";
+        $credential = rawurlencode($password);
+        $uri = "trojan://{$credential}@{$addr}:{$server['port']}?{$query}#{$name}";
         $uri .= "\r\n";
         return $uri;
     }
@@ -347,7 +348,8 @@ class General extends AbstractProtocol
             }
 
             $query = http_build_query($params);
-            $uri = "hysteria2://{$password}@{$addr}:{$server['port']}?{$query}#{$name}";
+            $credential = rawurlencode($password);
+            $uri = "hysteria2://{$credential}@{$addr}:{$server['port']}?{$query}#{$name}";
         } else {
             $params['protocol'] = 'udp';
             $params['auth'] = $password;
@@ -375,8 +377,8 @@ class General extends AbstractProtocol
         $name = rawurlencode($server['name']);
         $addr = Helper::wrapIPv6($server['host']);
         $port = $server['port'];
-        $uuid = $password; // v2rayN格式里，uuid和password都是密码部分
-        $pass = $password;
+        $uuid = rawurlencode(data_get($server, 'uuid', $password));
+        $pass = rawurlencode($password);
 
         $queryParams = [];
 
@@ -435,7 +437,8 @@ class General extends AbstractProtocol
         ];
         $query = http_build_query($params);
         $addr = Helper::wrapIPv6($server['host']);
-        $uri = "anytls://{$password}@{$addr}:{$server['port']}?{$query}#{$name}";
+        $credential = rawurlencode($password);
+        $uri = "anytls://{$credential}@{$addr}:{$server['port']}?{$query}#{$name}";
         $uri .= "\r\n";
         return $uri;
     }
@@ -443,7 +446,8 @@ class General extends AbstractProtocol
     public static function buildSocks($password, $server)
     {
         $name = rawurlencode($server['name']);
-        $credentials = base64_encode("{$password}:{$password}");
+        $username = data_get($server, 'username', $password);
+        $credentials = base64_encode("{$username}:{$password}");
         $addr = Helper::wrapIPv6($server['host']);
         return "socks://{$credentials}@{$addr}:{$server['port']}#{$name}\r\n";
     }
@@ -459,7 +463,8 @@ class General extends AbstractProtocol
         $addr = Helper::wrapIPv6($server['host']);
         // Match Xboard's UUID-based HTTP/SOCKS authentication convention.
         $credential = rawurlencode($password);
-        $uri = "naive+https://{$credential}:{$credential}@{$addr}:{$server['port']}";
+        $username = rawurlencode(data_get($server, 'username', $password));
+        $uri = "naive+https://{$username}:{$credential}@{$addr}:{$server['port']}";
 
         if ($serverName = data_get($server, 'protocol_settings.tls_settings.server_name')) {
             $uri .= '?' . http_build_query(['sni' => $serverName], '', '&', PHP_QUERY_RFC3986);
@@ -473,7 +478,8 @@ class General extends AbstractProtocol
         $protocol_settings = data_get($server, 'protocol_settings', []);
         $name = rawurlencode($server['name']);
         $addr = Helper::wrapIPv6($server['host']);
-        $credentials = base64_encode("{$password}:{$password}");
+        $username = data_get($server, 'username', $password);
+        $credentials = base64_encode("{$username}:{$password}");
 
         $params = [];
         if (data_get($protocol_settings, 'tls')) {

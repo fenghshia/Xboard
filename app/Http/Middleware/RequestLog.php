@@ -7,7 +7,7 @@ use Closure;
 
 class RequestLog
 {
-    private const SENSITIVE_KEYS = ['password', 'token', 'secret', 'key', 'api_key'];
+    private const SENSITIVE_KEYS = ['password', 'token', 'secret', 'key', 'api_key', 'credentials', 'external_credentials'];
 
     public function handle($request, Closure $next)
     {

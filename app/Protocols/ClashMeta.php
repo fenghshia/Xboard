@@ -642,7 +642,7 @@ class ClashMeta extends AbstractProtocol
         if (data_get($protocol_settings, 'version') === 4) {
             $array['token'] = $password;
         } else {
-            $array['uuid'] = $password;
+            $array['uuid'] = data_get($server, 'uuid', $password);
             $array['password'] = $password;
         }
 
@@ -693,7 +693,7 @@ class ClashMeta extends AbstractProtocol
             'type' => 'mieru',
             'server' => $server['host'],
             'port' => $server['port'],
-            'username' => $password,
+            'username' => data_get($server, 'username', $password),
             'password' => $password,
             'transport' => strtoupper(data_get($protocol_settings, 'transport', 'TCP'))
         ];
@@ -716,7 +716,7 @@ class ClashMeta extends AbstractProtocol
         $array['port'] = $server['port'];
         $array['udp'] = true;
 
-        $array['username'] = $password;
+        $array['username'] = data_get($server, 'username', $password);
         $array['password'] = $password;
 
         // TLS 配置
@@ -737,7 +737,7 @@ class ClashMeta extends AbstractProtocol
         $array['server'] = $server['host'];
         $array['port'] = $server['port'];
 
-        $array['username'] = $password;
+        $array['username'] = data_get($server, 'username', $password);
         $array['password'] = $password;
 
         // TLS 配置

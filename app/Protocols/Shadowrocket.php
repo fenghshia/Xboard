@@ -341,7 +341,8 @@ class Shadowrocket extends AbstractProtocol
         $query = http_build_query($params);
         $addr = Helper::wrapIPv6($server['host']);
 
-        $uri = "trojan://{$password}@{$addr}:{$server['port']}?{$query}&tfo=1#{$name}";
+        $credential = rawurlencode($password);
+        $uri = "trojan://{$credential}@{$addr}:{$server['port']}?{$query}&tfo=1#{$name}";
         $uri .= "\r\n";
         return $uri;
     }
@@ -404,7 +405,8 @@ class Shadowrocket extends AbstractProtocol
                 $query = http_build_query($params);
                 $addr = Helper::wrapIPv6($server['host']);
 
-                $uri = "hysteria2://{$password}@{$addr}:{$server['port']}?{$query}#{$server['name']}";
+                $credential = rawurlencode($password);
+                $uri = "hysteria2://{$credential}@{$addr}:{$server['port']}?{$query}#{$server['name']}";
                 $uri .= "\r\n";
                 break;
         }
@@ -423,7 +425,7 @@ class Shadowrocket extends AbstractProtocol
         if (data_get($protocol_settings, 'version') === 4) {
             $params['token'] = $password;
         } else {
-            $params['uuid'] = $password;
+            $params['uuid'] = data_get($server, 'uuid', $password);
             $params['password'] = $password;
         }
         $query = http_build_query($params);
@@ -443,7 +445,8 @@ class Shadowrocket extends AbstractProtocol
         ];
         $query = http_build_query($params);
         $addr = Helper::wrapIPv6($server['host']);
-        $uri = "anytls://{$password}@{$addr}:{$server['port']}?{$query}#{$name}";
+        $credential = rawurlencode($password);
+        $uri = "anytls://{$credential}@{$addr}:{$server['port']}?{$query}#{$name}";
         $uri .= "\r\n";
         return $uri;
     }
@@ -453,7 +456,8 @@ class Shadowrocket extends AbstractProtocol
         $protocol_settings = $server['protocol_settings'];
         $name = rawurlencode($server['name']);
         $addr = Helper::wrapIPv6($server['host']);
-        $uri = 'socks://' . base64_encode("{$password}:{$password}@{$addr}:{$server['port']}") . "?method=auto#{$name}";
+        $username = data_get($server, 'username', $password);
+        $uri = 'socks://' . base64_encode("{$username}:{$password}@{$addr}:{$server['port']}") . "?method=auto#{$name}";
         $uri .= "\r\n";
         return $uri;
     }

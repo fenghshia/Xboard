@@ -488,7 +488,7 @@ class Stash extends AbstractProtocol
         if (data_get($protocol_settings, 'version') === 4) {
             $array['token'] = $password;
         } else {
-            $array['uuid'] = $password;
+            $array['uuid'] = data_get($server, 'uuid', $password);
             $array['password'] = $password;
         }
 
@@ -525,7 +525,7 @@ class Stash extends AbstractProtocol
             'type' => 'socks5',
             'server' => $server['host'],
             'port' => $server['port'],
-            'username' => $password,
+            'username' => data_get($server, 'username', $password),
             'password' => $password,
             'udp' => true,
         ];
@@ -549,7 +549,7 @@ class Stash extends AbstractProtocol
             'type' => 'http',
             'server' => $server['host'],
             'port' => $server['port'],
-            'username' => $password,
+            'username' => data_get($server, 'username', $password),
             'password' => $password,
         ];
 

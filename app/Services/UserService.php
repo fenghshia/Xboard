@@ -116,6 +116,9 @@ class UserService
 
     public function trafficFetch(Server $server, string $protocol, array $data)
     {
+        if ($server->is_external) {
+            return;
+        }
         $server->rate = $server->getCurrentRate();
         $server = $server->toArray();
 

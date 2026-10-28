@@ -81,6 +81,7 @@
 
 <body>
   <div id="root"></div>
+  <script type="module" src="/assets/external-nodes/entry.js?v={{ $version }}"></script>
 </body>
 
 </html>

@@ -1,15 +1,18 @@
-本版本为 fenghshia/Xboard 的 NaïveProxy 订阅支持版本。
+手动外部节点支持版本。
 
-- General 通用 Base64 订阅新增 `naive+https` 链接，支持 IPv6、SNI 和凭据/名称编码。
-- sing-box 1.13+ 新增 Naive 出站，自动加入 selector/urltest。
-- 对旧版及核心版本未知的 sing-box 客户端过滤 Naive；保持其他节点下发。
-- 不下发 Naive 不支持的 insecure、uTLS、ALPN，不额外开启并发连接。
-- Actions 在测试通过后构建 linux/amd64、linux/arm64 Docker 镜像，成功后发布 Release。
-- 镜像固定到触发构建的提交，面板版本为 1.1.0。
+- 在后台“节点管理”右下角增加“手动外部节点”入口，提供新增、编辑、删除和权限组配置。
+- 支持 UUID、独立用户名/密码，以及协议参数 JSON，无需外部节点提供订阅服务或接入节点 API。
+- General、Clash/ClashMeta、sing-box 等订阅使用外部节点固定凭据；TUIC UUID 和密码独立。
+- 固定凭据使用 APP_KEY 加密保存，列表和编辑页不回显，编辑留空保留原值，审计日志脱敏。
+- 外部节点与机器分配、面板用户同步及流量扣费隔离。
+- 保留 v1.1.0 的 Naïve 订阅支持，并修复固定密码包含特殊字符时的 URI 编码。
 
-验证：17 项订阅回归测试通过，38 项断言；PHP 语法检查通过。
+验证：51 项 PHP 回归测试、113 项断言通过；后台页面的新增、编辑、删除、错误提示和手机窄屏交互检查通过。
 
-使用说明见 `docs/naive-subscription.md`。Naive 节点需要开启 TLS，节点程序需支持 Naive，
-并使用面板用户 UUID 作为用户名与密码；本版本不包含节点后端的新增实现。
+**升级需迁移数据库**：备份数据库及 `.env`，更新镜像后运行 `docker compose exec xboard php artisan xboard:update`，再重启面板。
 
-Docker 部署请使用 `ghcr.io/fenghshia/xboard:1.1.0`（也提供 `latest` 与 `v1.1.0` 标签）。
+完整使用说明：`docs/manual-external-nodes.md`。
+
+外部固定凭据由获得节点配置的用户共用，节点实际流量与限制由外部服务器负责。已有客户端缓存中的凭据不会因隐藏节点而自动失效。
+
+Docker 镜像：`ghcr.io/fenghshia/xboard:1.2.0`，提供 linux/amd64 和 linux/arm64。

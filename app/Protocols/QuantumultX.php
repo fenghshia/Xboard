@@ -232,7 +232,7 @@ class QuantumultX extends AbstractProtocol
         $addr = Helper::wrapIPv6($server['host']);
         $config = [
             "socks5={$addr}:{$server['port']}",
-            "username={$password}",
+            "username=" . data_get($server, 'username', $password),
             "password={$password}",
         ];
 
@@ -248,7 +248,7 @@ class QuantumultX extends AbstractProtocol
         $addr = Helper::wrapIPv6($server['host']);
         $config = [
             "http={$addr}:{$server['port']}",
-            "username={$password}",
+            "username=" . data_get($server, 'username', $password),
             "password={$password}",
         ];
 

@@ -30,8 +30,13 @@ jobs:
           tools: composer:v2
       - name: Install test dependencies
         run: composer install --no-interaction --prefer-dist --no-scripts --no-progress
-      - name: Test Naive subscriptions
-        run: vendor/bin/phpunit --bootstrap vendor/autoload.php tests/Unit/Protocols/NaiveSubscriptionTest.php
+      - name: Test subscriptions and external nodes
+        run: vendor/bin/phpunit --bootstrap vendor/autoload.php tests/Unit/Protocols/NaiveSubscriptionTest.php tests/Unit/External
+
+      - name: Check admin scripts
+        run: |
+          node --check public/assets/external-nodes/entry.js
+          node --input-type=module --check < public/assets/external-nodes/manage.js
 
   build:
     needs: test
@@ -158,7 +163,7 @@ jobs:
                 ...context.repo,
                 tag_name: tag,
                 target_commitish: context.sha,
-                name: `${tag} — NaiveProxy subscriptions`,
+                name: `${tag} — Manual external nodes`,
                 body,
                 draft: false,
                 prerelease: false

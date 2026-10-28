@@ -53,7 +53,7 @@ class ManageController extends Controller
     {
         $params = $request->validated();
         if ($request->input('id')) {
-            $server = Server::find($request->input('id'));
+            $server = Server::where('is_external', false)->find($request->input('id'));
             if (!$server) {
                 return $this->fail([400202, '服务器不存在']);
             }
@@ -84,7 +84,7 @@ class ManageController extends Controller
             'enabled' => 'nullable|boolean',
         ]);
 
-        $server = Server::find($request->id);
+        $server = Server::where('is_external', false)->find($request->id);
         if (!$server) {
             return $this->fail([400202, '服务器不存在']);
         }
@@ -116,7 +116,7 @@ class ManageController extends Controller
         $request->validate([
             'id' => 'required|integer',
         ]);
-        $server = Server::find($request->id);
+        $server = Server::where('is_external', false)->find($request->id);
         if (!$server) {
             return $this->fail([400202, '服务器不存在']);
         }
@@ -145,7 +145,7 @@ class ManageController extends Controller
         }
 
         try {
-            $deleted = Server::whereIn('id', $ids)->delete();
+            $deleted = Server::where('is_external', false)->whereIn('id', $ids)->delete();
             if ($deleted === false) {
                 return $this->fail([500, '批量删除失败']);
             }
@@ -167,7 +167,7 @@ class ManageController extends Controller
             'id' => 'required|integer',
         ]);
 
-        $server = Server::find($request->id);
+        $server = Server::where('is_external', false)->find($request->id);
         if (!$server) {
             return $this->fail([400202, '服务器不存在']);
         }
@@ -203,7 +203,7 @@ class ManageController extends Controller
         }
 
         try {
-            Server::whereIn('id', $ids)->update([
+            Server::where('is_external', false)->whereIn('id', $ids)->update([
                 'u' => 0,
                 'd' => 0,
             ]);
@@ -250,7 +250,7 @@ class ManageController extends Controller
         }
 
         try {
-            $servers = Server::whereIn('id', $ids)->get();
+            $servers = Server::where('is_external', false)->whereIn('id', $ids)->get();
             DB::transaction(function () use ($servers, $update) {
                 /** @var Server $server */
                 foreach ($servers as $server) {
@@ -271,7 +271,7 @@ class ManageController extends Controller
      */
     public function copy(Request $request)
     {
-        $server = Server::find($request->input('id'));
+        $server = Server::where('is_external', false)->find($request->input('id'));
         if (!$server) {
             return $this->fail([400202, '服务器不存在']);
         }

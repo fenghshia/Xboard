@@ -165,38 +165,38 @@ class SingBox extends AbstractProtocol
                 $proxies[] = $ssConfig;
             }
             if ($item['type'] === Server::TYPE_TROJAN) {
-                $trojanConfig = $this->buildTrojan($this->user['uuid'], $item);
+                $trojanConfig = $this->buildTrojan($item['password'], $item);
                 $proxies[] = $trojanConfig;
             }
             if ($item['type'] === Server::TYPE_VMESS) {
-                $vmessConfig = $this->buildVmess($this->user['uuid'], $item);
+                $vmessConfig = $this->buildVmess($item['password'], $item);
                 $proxies[] = $vmessConfig;
             }
             if (
                 $item['type'] === Server::TYPE_VLESS
                 && in_array(data_get($protocol_settings, 'network'), ['tcp', 'ws', 'grpc', 'http', 'quic', 'httpupgrade'])
             ) {
-                $vlessConfig = $this->buildVless($this->user['uuid'], $item);
+                $vlessConfig = $this->buildVless($item['password'], $item);
                 $proxies[] = $vlessConfig;
             }
             if ($item['type'] === Server::TYPE_HYSTERIA) {
-                $hysteriaConfig = $this->buildHysteria($this->user['uuid'], $item);
+                $hysteriaConfig = $this->buildHysteria($item['password'], $item);
                 $proxies[] = $hysteriaConfig;
             }
             if ($item['type'] === Server::TYPE_TUIC) {
-                $tuicConfig = $this->buildTuic($this->user['uuid'], $item);
+                $tuicConfig = $this->buildTuic($item['password'], $item);
                 $proxies[] = $tuicConfig;
             }
             if ($item['type'] === Server::TYPE_ANYTLS) {
-                $anytlsConfig = $this->buildAnyTLS($this->user['uuid'], $item);
+                $anytlsConfig = $this->buildAnyTLS($item['password'], $item);
                 $proxies[] = $anytlsConfig;
             }
             if ($item['type'] === Server::TYPE_SOCKS) {
-                $socksConfig = $this->buildSocks($this->user['uuid'], $item);
+                $socksConfig = $this->buildSocks($item['password'], $item);
                 $proxies[] = $socksConfig;
             }
             if ($item['type'] === Server::TYPE_HTTP) {
-                $httpConfig = $this->buildHttp($this->user['uuid'], $item);
+                $httpConfig = $this->buildHttp($item['password'], $item);
                 $proxies[] = $httpConfig;
             }
             if ($item['type'] === Server::TYPE_NAIVE) {
@@ -783,7 +783,7 @@ class SingBox extends AbstractProtocol
         if (data_get($protocol_settings, 'version') === 4) {
             $array['token'] = $password;
         } else {
-            $array['uuid'] = $password;
+            $array['uuid'] = data_get($server, 'uuid', $password);
             $array['password'] = $password;
         }
 
@@ -823,7 +823,7 @@ class SingBox extends AbstractProtocol
             'server' => $server['host'],
             'server_port' => $server['port'],
             'version' => '5', // 默认使用 socks5
-            'username' => $password,
+            'username' => data_get($server, 'username', $password),
             'password' => $password,
         ];
 
@@ -849,7 +849,7 @@ class SingBox extends AbstractProtocol
             'tag' => $server['name'],
             'server' => $server['host'],
             'server_port' => (int) $server['port'],
-            'username' => $password,
+            'username' => data_get($server, 'username', $password),
             'password' => $password,
             'tls' => $tls,
         ];
@@ -863,7 +863,7 @@ class SingBox extends AbstractProtocol
             'tag' => $server['name'],
             'server' => $server['host'],
             'server_port' => $server['port'],
-            'username' => $password,
+            'username' => data_get($server, 'username', $password),
             'password' => $password,
         ];
 

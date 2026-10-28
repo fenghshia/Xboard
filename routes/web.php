@@ -73,6 +73,14 @@ Route::get('/', function (Request $request) {
     }
 });
 
+Route::get('/' . admin_setting('secure_path', admin_setting('frontend_admin_path', hash('crc32b', config('app.key')))) . '/external-nodes', function () {
+    return view('external-nodes', [
+        'title' => admin_setting('app_name', 'XBoard'),
+        'version' => app(UpdateService::class)->getCurrentVersion(),
+        'secure_path' => admin_setting('secure_path', admin_setting('frontend_admin_path', hash('crc32b', config('app.key')))),
+    ]);
+});
+
 //TODO:: 兼容
 Route::get('/' . admin_setting('secure_path', admin_setting('frontend_admin_path', hash('crc32b', config('app.key')))), function () {
     return view('admin', [

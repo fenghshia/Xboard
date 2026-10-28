@@ -9,13 +9,28 @@ class ServerObserver
 {
     public bool $afterCommit = true;
 
+    public function saving(Server $server): void
+    {
+        if ($server->is_external) {
+            $server->machine_id = null;
+            $server->parent_id = null;
+            $server->enabled = false;
+        }
+    }
+
     public function created(Server $server): void
     {
+        if ($server->is_external) {
+            return;
+        }
         $this->notifyMachineNodesChanged($server->machine_id);
     }
 
     public function updated(Server $server): void
     {
+        if ($server->is_external) {
+            return;
+        }
         if ($server->wasChanged('group_ids')) {
             NodeSyncService::notifyFullSync($server->id);
         } elseif ($server->wasChanged([
@@ -40,6 +55,9 @@ class ServerObserver
 
     public function deleted(Server $server): void
     {
+        if ($server->is_external) {
+            return;
+        }
         $this->notifyMachineChange(null, $server->getOriginal('machine_id') ?: $server->machine_id);
     }
 

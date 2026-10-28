@@ -96,6 +96,12 @@ class AdminRoute
                 $router->get('/generateEchKey', [ManageController::class, 'generateEchKey']);
             });
 
+            $router->group(['prefix' => 'server/external'], function ($router) {
+                $router->get('/fetch', [\App\Http\Controllers\V2\Admin\Server\ExternalController::class, 'fetch']);
+                $router->post('/save', [\App\Http\Controllers\V2\Admin\Server\ExternalController::class, 'save']);
+                $router->post('/drop', [\App\Http\Controllers\V2\Admin\Server\ExternalController::class, 'drop']);
+            });
+
             // 机器管理接口
             $router->group([
                 'prefix' => 'server/machine'
