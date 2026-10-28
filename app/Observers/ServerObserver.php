@@ -9,15 +9,6 @@ class ServerObserver
 {
     public bool $afterCommit = true;
 
-    public function saving(Server $server): void
-    {
-        if ($server->is_external) {
-            $server->machine_id = null;
-            $server->parent_id = null;
-            $server->enabled = false;
-        }
-    }
-
     public function created(Server $server): void
     {
         if ($server->is_external) {

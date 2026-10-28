@@ -8,7 +8,6 @@ use App\Http\Requests\Admin\ExternalServerSave;
 use App\Models\Server;
 use App\Models\ServerMachine;
 use App\Models\User;
-use App\Observers\ServerObserver;
 use App\Protocols\ClashMeta;
 use App\Protocols\General;
 use App\Protocols\SingBox;
@@ -88,8 +87,7 @@ class ManualExternalNodeTest extends TestCase
         Capsule::table('v2_server_group')->insert(['id' => 1]);
         Capsule::table('v2_server_group')->insert(['id' => 2]);
         Server::flushEventListeners();
-        // The production observer also prevents accidental machine assignment.
-        Server::saving(fn(Server $server) => (new ServerObserver())->saving($server));
+        Model::clearBootedModels();
     }
 
     protected function tearDown(): void
@@ -192,6 +190,13 @@ class ManualExternalNodeTest extends TestCase
         $this->assertFalse($external->enabled);
         $machine = new ServerMachine(); $machine->id = 5;
         $this->assertCount(0, ServerService::getMachineNodes($machine));
+        Capsule::connection()->transaction(function () use ($external) {
+            $external->machine_id = 5; $external->parent_id = 99; $external->enabled = true; $external->save();
+        });
+        $external->refresh();
+        $this->assertNull($external->machine_id);
+        $this->assertNull($external->parent_id);
+        $this->assertFalse($external->enabled);
     }
 
     public function test_username_and_password_remain_independent_in_exports(): void

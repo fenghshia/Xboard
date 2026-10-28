@@ -139,6 +139,18 @@ class Server extends Model
         'machine_id' => 'integer',
     ];
 
+    protected static function booted(): void
+    {
+        // Enforce before SQL writes, including writes inside a transaction.
+        static::saving(function (Server $server) {
+            if ($server->is_external) {
+                $server->machine_id = null;
+                $server->parent_id = null;
+                $server->enabled = false;
+            }
+        });
+    }
+
     private const MULTIPLEX_CONFIGURATION = [
         'multiplex' => [
             'type' => 'object',
